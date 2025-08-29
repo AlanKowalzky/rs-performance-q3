@@ -5,13 +5,14 @@ import './YearlyDataTable.css';
 interface YearlyDataTableProps {
   data: YearlyData[];
   columns: string[];
+  highlightedYear?: number;
 }
 
 const formatHeader = (header: string) => {
   return header.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
-export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns }) => {
+export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns, highlightedYear }) => {
   if (!data || data.length === 0) {
     return <p>No yearly data available.</p>;
   }
@@ -28,7 +29,7 @@ export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns 
         </thead>
         <tbody>
           {data.map((yearlyData) => (
-            <tr key={yearlyData.year}>
+            <tr key={yearlyData.year} className={yearlyData.year === highlightedYear ? 'highlight' : ''}>
               {columns.map((col) => {
                 const value = yearlyData[col as keyof YearlyData];
                 let displayValue: string | number = 'N/A';

@@ -1,31 +1,100 @@
-import { useState, useEffect } from 'react';
-import { CountriesData } from '../types';
+import { CO2Data } from '../types';
 
-const useData = () => {
-  const [data, setData] = useState<CountriesData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+let cachedData: CO2Data | null = null;
+let promise: Promise<void> | null = null;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/owid-co2-data.json');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const jsonData: CountriesData = await response.json();
-        setData(jsonData);
-      } catch (e: any) {
-        setError(e);
-      } finally {
-        setLoading(false);
+const fetchData = () => {
+  if (cachedData) {
+    return;
+  }
+  if (promise) {
+    throw promise;
+  }
+
+  promise = fetch('https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.json')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
-    };
+      return response.json();
+    })
+    .then(data => {
+      cachedData = data;
+    })
+    .catch(error => {
+      console.error('Failed to fetch data:', error);
+      // In a real app, you might want to handle this error state more gracefully
+    })
+    .finally(() => {
+      promise = null;
+    });
 
-    fetchData();
-  }, []);
-
-  return { data, loading, error };
+  throw promise;
 };
 
-export default useData;
+export const useData = (): CO2Data => {
+  if (cachedData) {
+    return cachedData;
+  }
+  fetchData(); 
+  // This line will either throw a promise (triggering Suspense) or the function will have returned cachedData.
+  // To satisfy TypeScript's return type, we'll cast it, assuming Suspense handles the thrown promise.
+  return {} as CO2Data; // This part is tricky, let's refine it.
+};
+
+// A better way to structure the hook for Suspense
+const resource = {
+  read: () => {
+    if (cachedData) {
+      return cachedData;
+    }
+    if (promise) {
+      throw promise;
+    }
+    fetchData();
+    throw new Error("Data fetching failed to initiate properly."); // Should be unreachable
+  }
+};
+
+function wrapPromise<T>(promise: Promise<T>) {
+  let status = 'pending';
+  let result: T;
+  let suspender = promise.then(
+    (r) => {
+      status = 'success';
+      result = r;
+    },
+    (e) => {
+      status = 'error';
+      result = e;
+    }
+  );
+  return {
+    read() {
+      if (status === 'pending') {
+        throw suspender;
+      } else if (status === 'error') {
+        throw result;
+      } else if (status === 'success') {
+        return result;
+      }
+    },
+  };
+}
+
+let dataResource: { read: () => CO2Data };
+
+const fetchSuspenseData = () => {
+    if (!dataResource) {
+        const promise = fetch('https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.json')
+            .then(res => res.json());
+        dataResource = wrapPromise<CO2Data>(promise);
+    }
+    return dataResource;
+}
+
+
+export const useSuspenseData = () => {
+    return fetchSuspenseData().read();
+}
+

@@ -1,26 +1,22 @@
-import React, { Suspense, useState, useMemo } from 'react';
+import React, { Suspense, useState, useMemo, useCallback, useEffect } from 'react';
 import './App.css';
-import useData from './hooks/useData';
+import { useSuspenseData } from './hooks/useData';
 import { Spinner } from './components/Spinner';
 import { CountryData } from './types';
 import { YearlyDataTable } from './components/YearlyDataTable';
 import { ColumnSelectorModal } from './components/ColumnSelectorModal';
+import CountryListItem from './components/CountryListItem';
 
-const getLatestPopulation = (country: CountryData) => {
-  if (!country.data || country.data.length === 0) {
+const getPopulationForYear = (country: CountryData, year: number | null) => {
+  if (!year || !country.data || country.data.length === 0) {
     return 'N/A';
   }
-  for (let i = country.data.length - 1; i >= 0; i--) {
-    if (country.data[i].population) {
-      return country.data[i].population?.toLocaleString();
-    }
-  }
-  return 'N/A';
+  const yearData = country.data.find(d => d.year === year);
+  return yearData?.population ?? 'N/A';
 };
 
 const CountryList = () => {
-  const dataResource = useData();
-  const countriesData = dataResource.read();
+  const countriesData = useSuspenseData();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -29,6 +25,43 @@ const CountryList = () => {
     'co2',
     'co2_per_capita',
   ]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [highlight, setHighlight] = useState(false);
+  const [regionFilter, setRegionFilter] = useState('All');
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    Object.values(countriesData).forEach(country => {
+      country.data?.forEach(d => {
+        if (d.year) years.add(d.year);
+      });
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [countriesData]);
+
+  useEffect(() => {
+    if (availableYears.length > 0 && selectedYear === null) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
+  
+  useEffect(() => {
+    if (highlight) {
+      const timer = setTimeout(() => setHighlight(false), 500); // Highlight for 500ms
+      return () => clearTimeout(timer);
+    }
+  }, [highlight]);
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedYear(parseInt(e.target.value, 10));
+    setHighlight(true);
+  };
+
+  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRegionFilter(e.target.value);
+  };
 
   const availableColumns = useMemo(() => {
     if (!countriesData) return [];
@@ -39,9 +72,91 @@ const CountryList = () => {
     return Object.keys(firstCountry.data[0]);
   }, [countriesData]);
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  const handleSort = useCallback((key: string) => {
+    let direction = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  }, [sortConfig]);
+
+  const filteredAndSortedCountries = useMemo(() => {
+    let countries = Object.entries(countriesData);
+
+    if (regionFilter !== 'All') {
+        countries = countries.filter(([_, countryData]) => {
+            if (regionFilter === 'Countries') return !!countryData.iso_code;
+            if (regionFilter === 'Regions') return !countryData.iso_code;
+            return true;
+        });
+    }
+
+    if (searchQuery) {
+      countries = countries.filter(([_, countryData]) =>
+        countryData.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (sortConfig !== null) {
+      countries.sort((a, b) => {
+        const aVal = a[1];
+        const bVal = b[1];
+
+        let aCompare: string | number = '';
+        let bCompare: string | number = '';
+
+        if (sortConfig.key === 'name') {
+          aCompare = aVal.name;
+          bCompare = bVal.name;
+        } else if (sortConfig.key === 'population') {
+          const aPop = getPopulationForYear(aVal, selectedYear);
+          const bPop = getPopulationForYear(bVal, selectedYear);
+          aCompare = typeof aPop === 'number' ? aPop : -1;
+          bCompare = typeof bPop === 'number' ? bPop : -1;
+        }
+
+        if (aCompare < bCompare) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aCompare > bCompare) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return countries;
+  }, [countriesData, searchQuery, sortConfig, selectedYear, regionFilter]);
+
   return (
     <div>
       <div className="toolbar">
+        <input
+          type="text"
+          placeholder="Search by country name..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+        <select onChange={handleYearChange} value={selectedYear ?? ''}>
+          {availableYears.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+        <select onChange={handleRegionChange} value={regionFilter}>
+            <option value="All">All</option>
+            <option value="Countries">Countries Only</option>
+            <option value="Regions">Regions Only</option>
+        </select>
+        <button onClick={() => handleSort('name')}>
+          Sort by Name {sortConfig?.key === 'name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+        </button>
+        <button onClick={() => handleSort('population')}>
+          Sort by Population {sortConfig?.key === 'population' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+        </button>
         <button onClick={() => setModalOpen(true)}>Select Columns</button>
       </div>
 
@@ -54,12 +169,16 @@ const CountryList = () => {
       />
 
       <ul className="country-list">
-        {Object.entries(countriesData).map(([countryCode, countryData]) => (
-          <li key={countryCode} className="country-item">
-            <h3>{countryData.name} ({countryData.iso_code || 'N/A'})</h3>
-            <p>Population: {getLatestPopulation(countryData)}</p>
-            <YearlyDataTable data={countryData.data} columns={selectedColumns} />
-          </li>
+        {filteredAndSortedCountries.map(([countryCode, countryData]) => (
+          <CountryListItem 
+            key={countryCode}
+            countryCode={countryCode}
+            countryData={countryData}
+            selectedYear={selectedYear}
+            highlight={highlight}
+            getPopulationForYear={getPopulationForYear}
+            selectedColumns={selectedColumns}
+          />
         ))}
       </ul>
     </div>
