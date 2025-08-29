@@ -1,9 +1,8 @@
 import React, { Suspense, useState, useMemo, useCallback, useEffect } from 'react';
 import './App.css';
 import { useSuspenseData } from './hooks/useData';
-import { Spinner } from './components/Spinner';
+import Spinner from './components/Spinner';
 import { CountryData } from './types';
-import { YearlyDataTable } from './components/YearlyDataTable';
 import { ColumnSelectorModal } from './components/ColumnSelectorModal';
 import CountryListItem from './components/CountryListItem';
 

@@ -57,28 +57,33 @@ const resource = {
 };
 
 function wrapPromise<T>(promise: Promise<T>) {
-  let status = 'pending';
+  let status: "pending" | "success" | "error" = "pending";
   let result: T;
+  let error: any;
+
   let suspender = promise.then(
-    (r) => {
-      status = 'success';
+    (r: T) => {
+      status = "success";
       result = r;
     },
-    (e) => {
-      status = 'error';
-      result = e;
+    (e: any) => {
+      status = "error";
+      error = e;
     }
   );
+
   return {
     read() {
-      if (status === 'pending') {
+      if (status === "pending") {
         throw suspender;
-      } else if (status === 'error') {
-        throw result;
-      } else if (status === 'success') {
+      } else if (status === "error") {
+        throw error;
+      } else if (status === "success") {
         return result;
       }
-    },
+      // This should be unreachable
+      throw new Error("Unexpected state in wrapPromise");
+    }
   };
 }
 
@@ -88,7 +93,7 @@ const fetchSuspenseData = () => {
     if (!dataResource) {
         const promise = fetch('https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.json')
             .then(res => res.json());
-        dataResource = wrapPromise<CO2Data>(promise);
+        dataResource = wrapPromise<CO2Data>(promise) as { read: () => CO2Data };
     }
     return dataResource;
 }

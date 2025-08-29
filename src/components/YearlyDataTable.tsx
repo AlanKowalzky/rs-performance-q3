@@ -1,9 +1,9 @@
 import React from 'react';
-import { YearlyData } from '../types';
+import { YearData } from '../types';
 import './YearlyDataTable.css';
 
-interface YearlyDataTableProps {
-  data: YearlyData[];
+interface YearDataTableProps {
+  data: YearData[];
   columns: string[];
   highlightedYear?: number;
 }
@@ -12,7 +12,7 @@ const formatHeader = (header: string) => {
   return header.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
-export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns, highlightedYear }) => {
+export const YearDataTable: React.FC<YearDataTableProps> = ({ data, columns, highlightedYear }) => {
   if (!data || data.length === 0) {
     return <p>No yearly data available.</p>;
   }
@@ -28,10 +28,10 @@ export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns,
           </tr>
         </thead>
         <tbody>
-          {data.map((yearlyData) => (
-            <tr key={yearlyData.year} className={yearlyData.year === highlightedYear ? 'highlight' : ''}>
+          {data.map((yearData) => (
+            <tr key={yearData.year} className={yearData.year === highlightedYear ? 'highlight' : ''}>
               {columns.map((col) => {
-                const value = yearlyData[col as keyof YearlyData];
+                const value = yearData[col as keyof YearData];
                 let displayValue: string | number = 'N/A';
                 if (typeof value === 'number') {
                   if (col === 'year') {
@@ -53,4 +53,3 @@ export const YearlyDataTable: React.FC<YearlyDataTableProps> = ({ data, columns,
     </div>
   );
 };
-
