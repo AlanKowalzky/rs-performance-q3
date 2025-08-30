@@ -30,3 +30,47 @@
 .yearly-data-table tr:hover {
   background-color: #f1f1f1;
 }
+
+.yearly-data-table tr.highlight {
+  background-color: #fff2ab;
+  font-weight: bold;
+}
+
+/* Responsive Card View for smaller screens */
+@media screen and (max-width: 768px) {
+  .yearly-data-table thead {
+    display: none; /* Hide table headers */
+  }
+
+  .yearly-data-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .yearly-data-table td {
+    display: block;
+    text-align: right;
+    border: none;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 50%;
+  }
+
+  .yearly-data-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 10px;
+    width: calc(50% - 20px);
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: bold;
+  }
+
+  .yearly-data-table td:last-child {
+    border-bottom: none;
+  }
+}

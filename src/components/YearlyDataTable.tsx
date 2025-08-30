@@ -12,7 +12,7 @@ const formatHeader = (header: string) => {
   return header.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
-export const YearDataTable: React.FC<YearDataTableProps> = ({ data, columns, highlightedYear }) => {
+export const YearlyDataTable: React.FC<YearDataTableProps> = ({ data, columns, highlightedYear }) => {
   if (!data || data.length === 0) {
     return <p>No yearly data available.</p>;
   }
@@ -44,7 +44,7 @@ export const YearDataTable: React.FC<YearDataTableProps> = ({ data, columns, hig
                 } else if (value) {
                   displayValue = String(value);
                 }
-                return <td key={col}>{displayValue}</td>;
+                return <td key={col} data-label={formatHeader(col)}>{displayValue}</td>;
               })}
             </tr>
           ))}

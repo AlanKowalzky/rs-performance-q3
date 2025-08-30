@@ -1,6 +1,6 @@
 import React from 'react';
 import { CountryData } from '../types';
-import { YearDataTable } from './YearDataTable';
+import { YearlyDataTable } from './YearlyDataTable';
 
 interface CountryListItemProps {
   countryCode: string;
@@ -22,7 +22,7 @@ const CountryListItem: React.FC<CountryListItemProps> = ({
     <li className={`country-item ${highlight ? 'highlight' : ''}`}>
       <h3>{countryData.name} ({countryData.iso_code || 'N/A'})</h3>
       <p>Population ({selectedYear}): {getPopulationForYear(countryData, selectedYear)?.toLocaleString()}</p>
-      <YearDataTable data={countryData.data} columns={selectedColumns} highlightedYear={selectedYear ?? undefined} />
+      <YearlyDataTable data={countryData.data} columns={selectedColumns} highlightedYear={selectedYear ?? undefined} />
     </li>
   );
 };

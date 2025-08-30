@@ -1,105 +1,63 @@
 import { CO2Data } from '../types';
 
-let cachedData: CO2Data | null = null;
-let promise: Promise<void> | null = null;
-
-const fetchData = () => {
-  if (cachedData) {
-    return;
-  }
-  if (promise) {
-    throw promise;
-  }
-
-  promise = fetch('https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.json')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      cachedData = data;
-    })
-    .catch(error => {
-      console.error('Failed to fetch data:', error);
-      // In a real app, you might want to handle this error state more gracefully
-    })
-    .finally(() => {
-      promise = null;
-    });
-
-  throw promise;
-};
-
-export const useData = (): CO2Data => {
-  if (cachedData) {
-    return cachedData;
-  }
-  fetchData(); 
-  // This line will either throw a promise (triggering Suspense) or the function will have returned cachedData.
-  // To satisfy TypeScript's return type, we'll cast it, assuming Suspense handles the thrown promise.
-  return {} as CO2Data; // This part is tricky, let's refine it.
-};
-
-// A better way to structure the hook for Suspense
-const resource = {
-  read: () => {
-    if (cachedData) {
-      return cachedData;
-    }
-    if (promise) {
-      throw promise;
-    }
-    fetchData();
-    throw new Error("Data fetching failed to initiate properly."); // Should be unreachable
-  }
-};
-
+// This function wraps a promise to make it compatible with React Suspense
 function wrapPromise<T>(promise: Promise<T>) {
-  let status: "pending" | "success" | "error" = "pending";
+  let status: 'pending' | 'success' | 'error' = 'pending';
   let result: T;
-  let error: any;
+  let error: unknown;
 
-  let suspender = promise.then(
+  const suspender = promise.then(
     (r: T) => {
-      status = "success";
+      status = 'success';
       result = r;
     },
-    (e: any) => {
-      status = "error";
+    (e: unknown) => {
+      status = 'error';
       error = e;
     }
   );
 
   return {
-    read() {
-      if (status === "pending") {
+    read(): T {
+      if (status === 'pending') {
         throw suspender;
-      } else if (status === "error") {
+      } else if (status === 'error') {
         throw error;
-      } else if (status === "success") {
+      } else if (status === 'success') {
         return result;
       }
-      // This should be unreachable
-      throw new Error("Unexpected state in wrapPromise");
-    }
+      throw new Error('Unexpected state in wrapPromise');
+    },
   };
 }
 
-let dataResource: { read: () => CO2Data };
+type DataResource = ReturnType<typeof wrapPromise<CO2Data>>;
 
-const fetchSuspenseData = () => {
-    if (!dataResource) {
-        const promise = fetch('https://raw.githubusercontent.com/owid/co2-data/master/owid-co2-data.json')
-            .then(res => res.json());
-        dataResource = wrapPromise<CO2Data>(promise) as { read: () => CO2Data };
-    }
-    return dataResource;
-}
+// Module-level cache for the data resource
+let dataResource: DataResource | undefined;
 
+const fetchData = (): DataResource => {
+  if (!dataResource) {
+    const promise = fetch('https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.json')
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(data => data as CO2Data)
+      .catch(err => {
+        console.error("Error fetching or parsing data:", err);
+        throw err;
+      });
+    dataResource = wrapPromise<CO2Data>(promise);
+  }
+  return dataResource;
+};
 
-export const useSuspenseData = () => {
-    return fetchSuspenseData().read();
-}
+export const useSuspenseData = (): CO2Data => {
+  return fetchData().read();
+};
 
+// Add an empty export to ensure this is treated as a module.
+export {};
