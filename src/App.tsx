@@ -114,7 +114,7 @@ const CountryList = () => {
 
     if (searchQuery) {
       tempCountries = tempCountries.filter(country =>
-        country.name.toLowerCase().includes(searchQuery.toLowerCase())
+        country.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
