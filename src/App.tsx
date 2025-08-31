@@ -6,7 +6,7 @@ import { CountryData } from './types';
 import { ColumnSelectorModal } from './components/ColumnSelectorModal';
 import CountryListItem from './components/CountryListItem';
 
-const getPopulationForYear = (country: CountryData, year: number | null) => {
+const getPopulationForYear = (country: CountryData, year: number | null): number | 'N/A' => {
   if (!year || !country.data || country.data.length === 0) {
     return 'N/A';
   }
@@ -25,7 +25,7 @@ const CountryList = () => {
     'co2_per_capita',
   ]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>({ key: 'name', direction: 'ascending' });
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [highlight, setHighlight] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
@@ -48,7 +48,7 @@ const CountryList = () => {
   
   useEffect(() => {
     if (highlight) {
-      const timer = setTimeout(() => setHighlight(false), 500); // Highlight for 500ms
+      const timer = setTimeout(() => setHighlight(false), 500);
       return () => clearTimeout(timer);
     }
   }, [highlight]);
@@ -76,46 +76,56 @@ const CountryList = () => {
   }, []);
 
   const handleSort = useCallback((key: string) => {
-    let direction = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  }, [sortConfig]);
+    setSortConfig(prevSortConfig => {
+      const direction = (prevSortConfig?.key === key && prevSortConfig.direction === 'ascending') ? 'descending' : 'ascending';
+      return { key, direction };
+    });
+  }, []);
 
-  const filteredAndSortedCountries = useMemo(() => {
-    let countries = Object.entries(countriesData);
+  // Memoization Chain Step 1: Expensive data processing
+  const processedCountries = useMemo(() => {
+    return Object.values(countriesData).map((country) => ({
+      ...country,
+      code: country.iso_code || country.name,
+      populationForYear: getPopulationForYear(country, selectedYear),
+    }));
+  }, [countriesData, selectedYear]);
+
+  // Memoization Chain Step 2: Filtering
+  const filteredCountries = useMemo(() => {
+    let tempCountries = processedCountries;
 
     if (regionFilter !== 'All') {
-        countries = countries.filter(([_, countryData]) => {
-            if (regionFilter === 'Countries') return !!countryData.iso_code;
-            if (regionFilter === 'Regions') return !countryData.iso_code;
-            return true;
-        });
+      tempCountries = tempCountries.filter(country => {
+        if (regionFilter === 'Countries') return !!country.iso_code;
+        if (regionFilter === 'Regions') return !country.iso_code;
+        return true;
+      });
     }
 
     if (searchQuery) {
-      countries = countries.filter(([_, countryData]) =>
-        countryData.name.toLowerCase().includes(searchQuery.toLowerCase())
+      tempCountries = tempCountries.filter(country =>
+        country.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    if (sortConfig !== null) {
-      countries.sort((a, b) => {
-        const aVal = a[1];
-        const bVal = b[1];
+    return tempCountries;
+  }, [processedCountries, regionFilter, searchQuery]);
 
+  // Memoization Chain Step 3: Sorting (cheap)
+  const filteredAndSortedCountries = useMemo(() => {
+    const tempCountries = [...filteredCountries]; // Create a new array for sorting
+    if (sortConfig !== null) {
+      tempCountries.sort((a, b) => {
         let aCompare: string | number = '';
         let bCompare: string | number = '';
 
         if (sortConfig.key === 'name') {
-          aCompare = aVal.name;
-          bCompare = bVal.name;
+          aCompare = a.name;
+          bCompare = b.name;
         } else if (sortConfig.key === 'population') {
-          const aPop = getPopulationForYear(aVal, selectedYear);
-          const bPop = getPopulationForYear(bVal, selectedYear);
-          aCompare = typeof aPop === 'number' ? aPop : -1;
-          bCompare = typeof bPop === 'number' ? bPop : -1;
+          aCompare = typeof a.populationForYear === 'number' ? a.populationForYear : -1;
+          bCompare = typeof b.populationForYear === 'number' ? b.populationForYear : -1;
         }
 
         if (aCompare < bCompare) {
@@ -127,9 +137,8 @@ const CountryList = () => {
         return 0;
       });
     }
-
-    return countries;
-  }, [countriesData, searchQuery, sortConfig, selectedYear, regionFilter]);
+    return tempCountries;
+  }, [filteredCountries, sortConfig]);
 
   return (
     <div>
@@ -168,11 +177,11 @@ const CountryList = () => {
       />
 
       <ul className="country-list">
-        {filteredAndSortedCountries.map(([countryCode, countryData]) => (
+        {filteredAndSortedCountries.map((country) => (
           <CountryListItem 
-            key={countryCode}
-            countryCode={countryCode}
-            countryData={countryData}
+            key={country.code}
+            countryCode={country.code}
+            countryData={country}
             selectedYear={selectedYear}
             highlight={highlight}
             getPopulationForYear={getPopulationForYear}
