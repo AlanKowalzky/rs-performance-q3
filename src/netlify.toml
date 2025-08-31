@@ -1,0 +1,3 @@
+[build]
+  command = "cross-env PROFILE=true npm run build"
+  publish = "build"

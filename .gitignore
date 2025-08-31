@@ -27,3 +27,5 @@ public/owid*
 
 # Local Netlify folder
 .netlify
+# *.txt
+

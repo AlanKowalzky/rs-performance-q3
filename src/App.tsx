@@ -93,9 +93,9 @@ const CountryList = () => {
 
   // Memoization Chain Step 1: Expensive data processing
   const processedCountries = useMemo(() => {
-    return Object.values(countriesData).map((country) => ({
+    return Object.values(countriesData).map((country, index) => ({
       ...country,
-      code: country.iso_code || country.name,
+      code: country.iso_code || country.name || `country-${index}`,
       populationForYear: getPopulationForYear(country, selectedYear),
     }));
   }, [countriesData, selectedYear]);

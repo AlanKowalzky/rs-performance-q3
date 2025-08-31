@@ -38,18 +38,31 @@ let dataResource: DataResource | undefined;
 
 const fetchData = (): DataResource => {
   if (!dataResource) {
-    const promise = fetch('https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.json')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
+    const promise = new Promise<CO2Data>((resolve, reject) => {
+      // Create a new worker. The path is relative to the public folder.
+      const worker = new Worker('/data.worker.js');
+
+      worker.onmessage = (event) => {
+        if (event.data.status === 'success') {
+          console.log('Main thread: Received data from worker.');
+          resolve(event.data.data as CO2Data);
+        } else {
+          console.error('Main thread: Received error from worker.', event.data.error);
+          reject(new Error(event.data.error));
         }
-        return res.json();
-      })
-      .then(data => data as CO2Data)
-      .catch(err => {
-        console.error("Error fetching or parsing data:", err);
-        throw err;
-      });
+        worker.terminate();
+      };
+
+      worker.onerror = (error) => {
+        console.error('Main thread: Worker error.', error);
+        reject(error);
+        worker.terminate();
+      };
+
+      // Send a message to the worker to start fetching data.
+      worker.postMessage('start');
+    });
+
     dataResource = wrapPromise<CO2Data>(promise);
   }
   return dataResource;
