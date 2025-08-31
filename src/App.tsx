@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useMemo, useCallback, useEffect } from 'react';
+import React, { Suspense, useState, useMemo, useCallback, useEffect, useTransition } from 'react';
 import './App.css';
 import { useSuspenseData } from './hooks/useData';
 import Spinner from './components/Spinner';
@@ -29,6 +29,7 @@ const CountryList = () => {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [highlight, setHighlight] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
+  const [isPending, startTransition] = useTransition();
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -54,12 +55,16 @@ const CountryList = () => {
   }, [highlight]);
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedYear(parseInt(e.target.value, 10));
+    startTransition(() => {
+      setSelectedYear(parseInt(e.target.value, 10));
+    });
     setHighlight(true);
   };
 
   const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRegionFilter(e.target.value);
+    startTransition(() => {
+      setRegionFilter(e.target.value);
+    });
   };
 
   const availableColumns = useMemo(() => {
@@ -71,16 +76,20 @@ const CountryList = () => {
     return Object.keys(firstCountry.data[0]);
   }, [countriesData]);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
-
-  const handleSort = useCallback((key: string) => {
-    setSortConfig(prevSortConfig => {
-      const direction = (prevSortConfig?.key === key && prevSortConfig.direction === 'ascending') ? 'descending' : 'ascending';
-      return { key, direction };
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    startTransition(() => {
+      setSearchQuery(e.target.value);
     });
-  }, []);
+  };
+
+  const handleSort = (key: string) => {
+    startTransition(() => {
+      setSortConfig(prevSortConfig => {
+        const direction = (prevSortConfig?.key === key && prevSortConfig.direction === 'ascending') ? 'descending' : 'ascending';
+        return { key, direction };
+      });
+    });
+  };
 
   // Memoization Chain Step 1: Expensive data processing
   const processedCountries = useMemo(() => {
@@ -176,19 +185,22 @@ const CountryList = () => {
         onSave={setSelectedColumns}
       />
 
-      <ul className="country-list">
-        {filteredAndSortedCountries.map((country) => (
-          <CountryListItem 
-            key={country.code}
-            countryCode={country.code}
-            countryData={country}
-            selectedYear={selectedYear}
-            highlight={highlight}
-            getPopulationForYear={getPopulationForYear}
-            selectedColumns={selectedColumns}
-          />
-        ))}
-      </ul>
+      <div className="list-container">
+        {isPending && <div className="spinner-overlay"><Spinner /></div>}
+        <ul className="country-list" style={{ opacity: isPending ? 0.6 : 1 }}>
+          {filteredAndSortedCountries.map((country) => (
+            <CountryListItem 
+              key={country.code}
+              countryCode={country.code}
+              countryData={country}
+              selectedYear={selectedYear}
+              highlight={highlight}
+              getPopulationForYear={getPopulationForYear}
+              selectedColumns={selectedColumns}
+            />
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-/* Basic Styles */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -16,4 +15,68 @@ body {
   background-color: #282c34;
   padding: 20px;
   color: white;
+  margin-bottom: 1rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  flex-wrap: wrap;
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.toolbar input,
+.toolbar select,
+.toolbar button {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.country-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 2rem;
+}
+
+.country-item {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: left;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.country-item:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.country-item.highlight {
+  background-color: #fffbe5; /* A light yellow for highlight */
+}
+
+.list-container {
+  position: relative;
+  padding-top: 1rem; /* Add some space for the list */
+}
+
+.spinner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  border-radius: 8px;
 }
