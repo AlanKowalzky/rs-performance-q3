@@ -130,8 +130,8 @@ const CountryList = () => {
         let bCompare: string | number = '';
 
         if (sortConfig.key === 'name') {
-          aCompare = a.name;
-          bCompare = b.name;
+          aCompare = a.name || '';
+          bCompare = b.name || '';
         } else if (sortConfig.key === 'population') {
           aCompare = typeof a.populationForYear === 'number' ? a.populationForYear : -1;
           bCompare = typeof b.populationForYear === 'number' ? b.populationForYear : -1;
