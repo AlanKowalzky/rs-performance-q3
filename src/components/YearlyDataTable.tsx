@@ -17,6 +17,8 @@ export const YearlyDataTable: React.FC<YearDataTableProps> = ({ data, columns, h
     return <p>No yearly data available.</p>;
   }
 
+  const sortedData = [...data].sort((a, b) => b.year - a.year);
+
   return (
     <div className="table-container">
       <table className="yearly-data-table">
@@ -28,7 +30,7 @@ export const YearlyDataTable: React.FC<YearDataTableProps> = ({ data, columns, h
           </tr>
         </thead>
         <tbody>
-          {data.map((yearData) => (
+          {sortedData.map((yearData) => (
             <tr key={yearData.year} className={yearData.year === highlightedYear ? 'highlight' : ''}>
               {columns.map((col) => {
                 const value = yearData[col as keyof YearData];

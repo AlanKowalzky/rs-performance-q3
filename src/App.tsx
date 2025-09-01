@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useMemo, useEffect, useTransition } from 'react';
+import React, { Suspense, useState, useMemo, useEffect, useTransition, useCallback } from 'react';
 import './App.css';
 import { useSuspenseData } from './hooks/useData';
 import Spinner from './components/Spinner';
@@ -31,6 +31,8 @@ const CountryList = () => {
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPending, startTransition] = useTransition();
   const [expandedCountryCode, setExpandedCountryCode] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // You can adjust this value
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -86,9 +88,9 @@ const CountryList = () => {
     });
   };
 
-  const handleToggleExpand = (countryCode: string) => {
+  const handleToggleExpand = useCallback((countryCode: string) => {
     setExpandedCountryCode(prev => prev === countryCode ? null : countryCode);
-  };
+  }, []);
 
   // Memoization Chain Step 1: Expensive data processing
   const processedCountries = useMemo(() => {
@@ -163,6 +165,13 @@ const CountryList = () => {
     return tempCountries;
   }, [filteredCountries, sortConfig]);
 
+  // Pagination logic
+  const indexOfLastCountry = currentPage * itemsPerPage;
+  const indexOfFirstCountry = indexOfLastCountry - itemsPerPage;
+  const currentCountries = useMemo(() => filteredAndSortedCountries.slice(indexOfFirstCountry, indexOfLastCountry), [filteredAndSortedCountries, indexOfFirstCountry, indexOfLastCountry]);
+
+  const totalPages = Math.ceil(filteredAndSortedCountries.length / itemsPerPage);
+
   return (
     <div>
       <div className="toolbar">
@@ -202,7 +211,7 @@ const CountryList = () => {
       <div className="list-container">
         {isPending && <div className="spinner-overlay"><Spinner /></div>}
         <ul className="country-list" style={{ opacity: isPending ? 0.6 : 1 }}>
-          {filteredAndSortedCountries.map((country) => (
+          {currentCountries.map((country) => (
             <CountryListItem 
               key={country.code}
               countryCode={country.code}
@@ -216,6 +225,11 @@ const CountryList = () => {
             />
           ))}
         </ul>
+        <div className="pagination-controls">
+          <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}>Previous</button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>Next</button>
+        </div>
       </div>
     </div>
   );
