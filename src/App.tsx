@@ -26,10 +26,11 @@ const CountryList = () => {
   ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>({ key: 'name', direction: 'ascending' });
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(2023);
   const [highlight, setHighlight] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPending, startTransition] = useTransition();
+  const [expandedCountryCode, setExpandedCountryCode] = useState<string | null>(null);
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -41,12 +42,6 @@ const CountryList = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [countriesData]);
 
-  useEffect(() => {
-    if (availableYears.length > 0 && selectedYear === null) {
-      setSelectedYear(availableYears[0]);
-    }
-  }, [availableYears, selectedYear]);
-  
   useEffect(() => {
     if (highlight) {
       const timer = setTimeout(() => setHighlight(false), 500);
@@ -91,13 +86,30 @@ const CountryList = () => {
     });
   };
 
+  const handleToggleExpand = (countryCode: string) => {
+    setExpandedCountryCode(prev => prev === countryCode ? null : countryCode);
+  };
+
   // Memoization Chain Step 1: Expensive data processing
   const processedCountries = useMemo(() => {
-    return Object.values(countriesData).map((country, index) => ({
-      ...country,
-      code: country.iso_code || country.name || `country-${index}`,
-      populationForYear: getPopulationForYear(country, selectedYear),
-    }));
+    // The raw data from OWID uses the key as the region name, and has a `country` property for countries.
+    // We need to normalize this into a consistent `name` property for the rest of the app.
+    return Object.entries(countriesData).map(([key, value], index) => {
+      // For regions, `value.country` is undefined, so we use the key (e.g., "Asia").
+      // For countries, `value.country` is the name (e.g., "Poland").
+      const name = (value as any).country || key;
+      
+      const countryWithData = {
+        ...value,
+        name: name,
+      };
+
+      return {
+        ...countryWithData,
+        code: value.iso_code || name || `country-${index}`,
+        populationForYear: getPopulationForYear(countryWithData, selectedYear),
+      };
+    });
   }, [countriesData, selectedYear]);
 
   // Memoization Chain Step 2: Filtering
@@ -113,8 +125,10 @@ const CountryList = () => {
     }
 
     if (searchQuery) {
+      const lowercasedQuery = searchQuery.toLowerCase();
       tempCountries = tempCountries.filter(country =>
-        (country.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+        (country.name || '').toLowerCase().includes(lowercasedQuery) ||
+        (country.iso_code || '').toLowerCase().includes(lowercasedQuery)
       );
     }
 
@@ -197,6 +211,8 @@ const CountryList = () => {
               highlight={highlight}
               getPopulationForYear={getPopulationForYear}
               selectedColumns={selectedColumns}
+              isExpanded={expandedCountryCode === country.code}
+              onToggleExpand={() => handleToggleExpand(country.code)}
             />
           ))}
         </ul>

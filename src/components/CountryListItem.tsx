@@ -9,6 +9,8 @@ interface CountryListItemProps {
   highlight: boolean;
   getPopulationForYear: (country: CountryData, year: number | null) => string | number;
   selectedColumns: string[];
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 const CountryListItem: React.FC<CountryListItemProps> = ({
@@ -17,12 +19,18 @@ const CountryListItem: React.FC<CountryListItemProps> = ({
   highlight,
   getPopulationForYear,
   selectedColumns,
+  isExpanded,
+  onToggleExpand,
 }) => {
   return (
     <li className={`country-item ${highlight ? 'highlight' : ''}`}>
-      <h3>{countryData.name} ({countryData.iso_code || 'N/A'})</h3>
-      <p>Population ({selectedYear}): {getPopulationForYear(countryData, selectedYear)?.toLocaleString()}</p>
-      <YearlyDataTable data={countryData.data} columns={selectedColumns} highlightedYear={selectedYear ?? undefined} />
+      <div onClick={onToggleExpand} style={{ cursor: 'pointer' }}>
+        <h3>{countryData.name} {countryData.iso_code && `(${countryData.iso_code})`}</h3>
+        <p>Population ({selectedYear}): {getPopulationForYear(countryData, selectedYear)?.toLocaleString()}</p>
+      </div>
+      {isExpanded && (
+        <YearlyDataTable data={countryData.data} columns={selectedColumns} highlightedYear={selectedYear ?? undefined} />
+      )}
     </li>
   );
 };
